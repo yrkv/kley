@@ -1,0 +1,6 @@
+let x: int = [echo {2 + 3}];
+let y: int = x + 1;
+let z: int = [echo {y + x}];
+z = z + 1;
+[echo {z}];
+

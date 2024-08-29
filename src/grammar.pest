@@ -1,0 +1,42 @@
+WHITESPACE = _{ " " | "\n" | "\t" }
+COMMENT = _{ ("//" ~ !("/" | "!") ~ (!newline ~ ANY)* ~ newline) }
+newline = { "\n" | "\r\n" }
+program = _{ SOI ~ ((stmt ~ ";")+) ~ EOI }
+
+// statements
+stmt = _{
+    binding | assign | expression
+}
+
+binding = { "let" ~ ident ~ ":" ~ type ~ "=" ~ expression }
+assign = { ident ~ "=" ~ expression }
+type = @{ ident ~ ("<" ~ ident ~ ">")? }
+
+expression = _{
+    infix_expr
+    | expr
+    | ("(" ~ expression ~ ")")
+}
+
+expr = {
+    atom
+    | command
+    | block
+}
+atom = _{ number | boolean | ident }
+
+block = { "{" ~ expression ~ "}" }
+
+command_text = @{ (!("[" | "]" | "{" | "}") ~ ANY)+ }
+command = { "[" ~ (command_text | block)+ ~ "]" }
+
+number = { ASCII_DIGIT+ }
+boolean = { "true" | "false" }
+ident = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* } 
+
+infix = { "+" | "-" | "*" | "/" }
+infix_expr = { expr ~ infix ~ expression }
+
+
+
+
