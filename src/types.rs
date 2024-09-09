@@ -51,7 +51,7 @@ impl Value {
             (Value::Command { command }, Type::Str) => {
                 let output = command.borrow_mut().output().unwrap();
                 let stdout = String::from_utf8(output.stdout).unwrap();
-                Some(Value::Str(stdout))
+                Some(Value::Str(stdout.trim().to_string()))
             }
             (Value::Command { command: _ }, Type::Int) => {
                 self.convert(&Type::Str).unwrap().convert(ty)
@@ -84,6 +84,7 @@ impl Value {
 
                 Some(Value::Str(ys.join(" ")))
             }
+            (Value::Int(x), Type::Str) => Some(Value::Str(x.to_string())),
             // everything can be converted to itself
             (Value::Int(_), Type::Int) => Some(self),
             (Value::Str(_), Type::Str) => Some(self),

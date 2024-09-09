@@ -5,18 +5,10 @@ use crate::{
     types::{Type, Value},
 };
 
-// use crate::parse::{AstNode, CommandPart, InfixVerb};
-
 #[derive(Debug, Clone)]
 pub struct Env {
     vars: Vec<(String, Type, Value)>,
 }
-
-// #[derive(Debug, Clone)]
-// pub enum Val {
-//     Integer(i64),
-//     Unit,
-// }
 
 fn envlookup(env: &Env, var: &str) -> Option<Value> {
     env.vars
@@ -46,48 +38,34 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
             (out, env)
         }
         AstNode::Integer(x) => (Value::Int(*x), env),
+        AstNode::Boolean(b) => (Value::Bool(*b), env),
         AstNode::Ident(var) => (envlookup(&env, var).expect("identifier not found"), env),
-        AstNode::Command { parts } => {
-            let mut cmdline: String = String::new();
-            for part in parts {
-                let append = match part {
-                    CommandPart::Text(s) => s.clone(),
-                    CommandPart::Expr(e) => {
-                        let (val, _) = eval_env(&e, env.clone());
-                        match val {
-                            Value::Int(x) => x.to_string(),
-                            Value::Str(s) => s,
-                            Value::Bool(_) => todo!(),
-                            Value::List(_) => {
-                                let Value::Str(s) = val.convert(&Type::Str).unwrap() else {
-                                    todo!()
-                                };
-                                s
-                            }
-                            Value::Unit => String::new(),
-                            Value::Command { command: _ } => todo!(),
-                        }
-                    }
-                };
-                cmdline.push_str(&append);
+        AstNode::Command(tokens) => {
+            // evaluate each token down to a string with concatenated parts
+            let mut args: Vec<String> = Vec::new();
+
+            for tok in tokens {
+                let parts: Vec<String> = tok
+                    .0
+                    .iter()
+                    .map(|ast| {
+                        let (val, _) = eval_env(&ast, env.clone());
+                        let Some(Value::Str(s)) = val.convert(&Type::Str) else {
+                            panic!()
+                        };
+                        s
+                    })
+                    .collect();
+                args.push(parts.concat());
             }
 
-            let args: Vec<_> = cmdline.trim().split_whitespace().collect();
-            // println!("command: {:?}", args);
-
             let Some((program, args)) = args.split_first() else {
+                // commands have to have at least one token (i.e. the program)
                 todo!();
             };
             let mut cmd = Command::new(program);
             cmd.args(args);
-            // let output = cmd.output();
-            // println!("{:?}", output);
 
-            // TODO: a "command" type which gets coerced easily.
-            // for now, just interpret each command as an int
-            // let x: String = String::from_utf8(output.unwrap().stdout).unwrap();
-
-            // (Value::Str(x), env)
             (
                 Value::Command {
                     command: Rc::new(RefCell::new(cmd)),
@@ -104,9 +82,6 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
                     let _ = command.borrow_mut().spawn().unwrap().wait();
                 }
             }
-            // if env.vars.is_empty() {
-            // println!("block: {:?}", block_env);
-            // }
             (out, env)
         }
         AstNode::Assign { ident, expr } => {
@@ -135,6 +110,37 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
             env.vars
                 .insert(0, (ident.to_string(), ty.clone(), v.clone()));
             (Value::Unit, env)
+        }
+        AstNode::QuoteString(qs) => {
+            let parts: Vec<String> = qs
+                .iter()
+                .map(|ast| {
+                    let (val, _) = eval_env(&ast, env.clone());
+                    let Some(Value::Str(s)) = val.convert(&Type::Str) else {
+                        panic!()
+                    };
+                    s
+                })
+                .collect();
+            (Value::Str(parts.concat()), env)
+        }
+        AstNode::StringLiteral(s) => (Value::Str(String::from(s)), env),
+        AstNode::Unit => todo!(),
+        AstNode::IfThenElse {
+            cond,
+            t_block,
+            f_block,
+        } => {
+            let (out, _) = eval_env(cond, env.clone());
+            let Value::Bool(b) = out else {
+                todo!();
+            };
+            let (out, _) = if b {
+                eval_env(t_block, env.clone())
+            } else {
+                eval_env(f_block, env.clone())
+            };
+            (out, env)
         }
     }
 }

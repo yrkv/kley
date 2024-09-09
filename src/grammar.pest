@@ -1,12 +1,22 @@
 WHITESPACE = _{ " " | "\n" | "\t" }
 COMMENT = _{ ("//" ~ !("/" | "!") ~ (!newline ~ ANY)* ~ newline) }
 newline = { "\n" | "\r\n" }
-program = _{ SOI ~ ((stmt ~ ";")+) ~ EOI }
+program = _{ SOI ~ (stmt+) ~ EOI }
 
 // statements
 stmt = _{
-    binding | assign | expression
+    // function_def
+    ifthenelse
+    | (binding | assign | expression) ~ ";"
 }
+
+ifthenelse = {
+    "if" ~ "(" ~ expression ~ ")" ~ block_large ~ ("else" ~ block_large)?
+}
+
+// function_def = {
+    // "fn" ~ ident ~ 
+// }
 
 binding = { "let" ~ ident ~ ":" ~ type ~ "=" ~ expression }
 assign = { ident ~ "=" ~ expression }
@@ -15,26 +25,52 @@ type = @{ ident ~ ("<" ~ ident ~ ">")? }
 expression = _{
     infix_expr
     | expr
-    | ("(" ~ expression ~ ")")
 }
 
-expr = {
-    atom
+expr = _{
+    ("(" ~ expression ~ ")")
+    | ifthenelse
     | command
-    | block
+    | block_small
+    | call
+    | atom
 }
-atom = _{ number | boolean | ident }
+atom = _{ number | quote_string | boolean | ident }
 
-block = { "{" ~ expression ~ "}" }
+call = { ident ~ "(" ~ call_args ~ ")" }
+call_args = { expression? ~ ("," ~ expression)* }
 
-command_text = @{ (!("[" | "]" | "{" | "}") ~ ANY)+ }
-command = { "[" ~ (command_text | block)+ ~ "]" }
+// non-atomic because it's used for interpolation,
+// see https://pest.rs/book/grammars/syntax.html#non-atomic
+block_small = !{ "{" ~ expression ~ "}" }
+block_large = { "{" ~ stmt+ ~ expression? ~ "}" }
 
-number = { ASCII_DIGIT+ }
-boolean = { "true" | "false" }
+// command = { "[" ~ (command_text | block)+ ~ "]" }
+command = { "[" ~ command_token+ ~ "]" }
+command_token = ${
+    ( block_small
+    | command_text
+    | quote_string
+    | raw_string )+
+}
+command_text = ${ (!(WHITESPACE | "\"" | "'" | "[" | "]" | "{" | "}") ~ ANY)+ }
+// command_text_2quote = ${ (!("\"" | "{") ~ ANY)+ }
+// command_text = @{ (!("[" | "]" | "{" | "}") ~ ANY)+ }
+
+quote_string = ${ "\"" ~ (block_small | quote_string_text)* ~ "\"" }
+quote_string_text = ${ (!("\"" | "{") ~ ANY)+ }
+
+raw_string = ${ "'" ~ raw_string_text ~ "'" }
+raw_string_text = @{ (!"'" ~ ANY)* }
+
+number = @{ ASCII_DIGIT+ }
+boolean = @{ "true" | "false" }
 ident = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")* } 
 
-infix = { "+" | "-" | "*" | "/" }
+infix = @{
+    "+" | "-" | "*" | "/"
+    | ">" | "<" | "==" | "!="
+}
 infix_expr = { expr ~ infix ~ expression }
 
 

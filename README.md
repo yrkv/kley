@@ -43,7 +43,7 @@ features to start transitioning the scripts I use to Kley.
 > [!CAUTION]
 > In pre-alpha, anything may change at any time.
 
-#### Core Features, TODO for v0.2
+#### Core Features, TODO for v0.1 release
 - [x] Lexer, Parser, Interpreter
 - [ ] Basic types: `int`, `str`, `bool`, `list<T>`, `unit`
 - [ ] Internal shell / command mode + types: `command`, `output`
