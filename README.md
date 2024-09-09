@@ -36,12 +36,12 @@ TODO
 ## Other
 
 ### Current Project State
-Kley is currently in pre-alpha with the bare minimum implemented to write a few
-demo scripts. The primary focus right now is planning and filling out the core
+Kley currently has the bare minimum implemented to write a few demo scripts, and
+nothing more. The primary focus right now is planning and filling out the core
 features to start transitioning the scripts I use to Kley.
 
 > [!CAUTION]
-> In pre-alpha, anything may change at any time.
+> For now, anything may change at any time.
 
 #### Core Features, TODO for v0.1 release
 - [x] Lexer, Parser, Interpreter
