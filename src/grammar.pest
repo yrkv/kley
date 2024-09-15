@@ -20,7 +20,24 @@ ifthenelse = {
 
 binding = { "let" ~ ident ~ ":" ~ type ~ "=" ~ expression }
 assign = { ident ~ "=" ~ expression }
-type = @{ ident ~ ("<" ~ ident ~ ">")? }
+
+// type = @{ ident ~ ("<" ~ ident ~ ">")? }
+type = _{
+    t_str | t_int | t_bool | t_unit | t_float
+    | t_list | t_map | t_tuple | t_variant | t_record
+    | t_ident // t_ident has to be least due to PEG rules
+}
+t_str = @{ "str" }
+t_int = @{ "int" }
+t_bool = @{ "bool" }
+t_unit = @{ "unit" }
+t_float = @{ "float" }
+t_list = { "list" ~ "<" ~ type ~ ">" }
+t_map = { "map" ~ "<" ~ type ~ "," ~ type ~ ">" }
+t_tuple = { "(" ~ type ~ ("," ~ type)* ~ ","? ~ ")" }
+t_variant = { "[" ~ ident ~ ":" ~ type ~ ("," ~ ident ~ ":" ~ type)* ~ ","? ~ "]" }
+t_record = { "{" ~ ident ~ ":" ~ type ~ ("," ~ ident ~ ":" ~ type)* ~ ","? ~ "}" }
+t_ident = @{ ident }
 
 expression = _{
     infix_expr
@@ -32,6 +49,7 @@ expr = _{
     | ifthenelse
     | command
     | block_small
+    | record_value
     | call
     | atom
 }
@@ -44,6 +62,13 @@ call_args = { expression? ~ ("," ~ expression)* }
 // see https://pest.rs/book/grammars/syntax.html#non-atomic
 block_small = !{ "{" ~ expression ~ "}" }
 block_large = { "{" ~ stmt+ ~ expression? ~ "}" }
+
+record_value = {
+    "{" ~
+        ident ~ ":" ~ expression ~
+        ("," ~ ident ~ ":" ~ expression)* ~ ","?
+    ~ "}"
+}
 
 // command = { "[" ~ (command_text | block)+ ~ "]" }
 command = { "[" ~ command_token+ ~ "]" }

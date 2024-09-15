@@ -1,4 +1,4 @@
-use std::{cell::RefCell, process::Command, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, process::Command, rc::Rc};
 
 use crate::{
     ast::*,
@@ -104,7 +104,7 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
             let (v, _) = eval_env(expr, env.clone());
 
             let Some(v) = v.convert(ty) else {
-                todo!();
+                todo!("failed to convert");
             };
             let mut env = env;
             env.vars
@@ -141,6 +141,14 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
                 eval_env(f_block, env.clone())
             };
             (out, env)
+        }
+        AstNode::RecordValue(r) => {
+            let mut out = HashMap::new();
+            for (key, ast) in r.iter() {
+                let (val, _) = eval_env(ast, env.clone());
+                out.insert(key.clone(), val);
+            }
+            (Value::Record(out), env)
         }
     }
 }

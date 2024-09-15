@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::types::Type;
 
 #[derive(Debug)]
@@ -11,7 +13,8 @@ pub enum AstNode {
     Integer(i64),
     Boolean(bool),
     Ident(String),
-    Type(String),
+    // Type(String),
+    Type(Type),
     /// QuoteString uses StringLiteral for quote_string_text, and any AstNode for the block_small
     /// Note that there's multiple empty strings:  QuoteString([]) and StringLiteral("")
     QuoteString(Vec<AstNode>),
@@ -32,6 +35,9 @@ pub enum AstNode {
         t_block: Box<AstNode>,
         f_block: Box<AstNode>,
     },
+
+    // RecordType {}
+    RecordValue(HashMap<String, AstNode>),
 }
 
 #[derive(Debug)]

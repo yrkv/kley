@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use pest::{
     error::Error,
     iterators::{Pair, Pairs},
@@ -59,7 +61,8 @@ fn parse_term(pair: Pair<Rule>) -> AstNode {
             let mut inner = pair.into_inner();
             // println!("binding: {}", inner);
             let ident = get_string(&mut inner);
-            let ty = Type::parse(&get_string(&mut inner));
+            // let ty = Type::parse(&get_string(&mut inner));
+            let ty = Type::parse(inner.next().unwrap());
             let expr = get_ast(&mut inner);
             AstNode::Binding { ident, ty, expr }
         }
@@ -181,5 +184,26 @@ fn parse_term(pair: Pair<Rule>) -> AstNode {
                 f_block,
             }
         }
+        Rule::record_value => {
+            let mut out = HashMap::new();
+            let mut inner = pair.into_inner();
+            while inner.peek().is_some() {
+                let ident = get_string(&mut inner);
+                let ast = get_ast(&mut inner);
+                out.insert(ident, *ast);
+            }
+            AstNode::RecordValue(out)
+        }
+        Rule::t_str => todo!(),
+        Rule::t_int => todo!(),
+        Rule::t_bool => todo!(),
+        Rule::t_unit => todo!(),
+        Rule::t_float => todo!(),
+        Rule::t_list => todo!(),
+        Rule::t_map => todo!(),
+        Rule::t_tuple => todo!(),
+        Rule::t_variant => todo!(),
+        Rule::t_record => todo!(),
+        Rule::t_ident => todo!(),
     }
 }
