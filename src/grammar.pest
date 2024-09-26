@@ -56,7 +56,7 @@ expr = _{
 atom = _{ number | quote_string | boolean | ident }
 
 call = { ident ~ "(" ~ call_args ~ ")" }
-call_args = { expression? ~ ("," ~ expression)* }
+call_args = _{ expression? ~ ("," ~ expression)* }
 
 // non-atomic because it's used for interpolation,
 // see https://pest.rs/book/grammars/syntax.html#non-atomic

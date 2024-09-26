@@ -168,7 +168,15 @@ fn parse_term(pair: Pair<Rule>) -> AstNode {
         Rule::WHITESPACE => unreachable!(),
         Rule::newline => unreachable!(),
         Rule::program => unreachable!(),
-        Rule::call => todo!(),
+        Rule::call => {
+            let mut inner = pair.into_inner();
+            let name = get_string(&mut inner);
+            let mut args = Vec::new();
+            while inner.peek().is_some() {
+                args.push(parse_term(inner.next().unwrap()));
+            }
+            AstNode::Call { name, args }
+        }
         Rule::call_args => todo!(),
         Rule::ifthenelse => {
             let mut inner = pair.into_inner();

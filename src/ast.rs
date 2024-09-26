@@ -14,7 +14,7 @@ pub enum AstNode {
     Boolean(bool),
     Ident(String),
     // Type(String),
-    Type(Type),
+    // Type(Type),
     /// QuoteString uses StringLiteral for quote_string_text, and any AstNode for the block_small
     /// Note that there's multiple empty strings:  QuoteString([]) and StringLiteral("")
     QuoteString(Vec<AstNode>),
@@ -38,6 +38,10 @@ pub enum AstNode {
 
     // RecordType {}
     RecordValue(HashMap<String, AstNode>),
+    Call {
+        name: String,
+        args: Vec<AstNode>,
+    },
 }
 
 #[derive(Debug)]

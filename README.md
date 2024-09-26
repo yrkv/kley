@@ -60,7 +60,7 @@ For the time being, performance is intentionally being completely ignored in fav
 pronounced (almost) identically to the English word "clay".
 
 ### Alternatives
-- [Hush](https://hush-shell.github.io/) has similar goals and execution, with the primary differences being a lua-like syntax and a more Bash-like internal shell.
+- [Hush](https://hush-shell.github.io/) has similar goals and execution, with the primary differences being a lua-like syntax and a Bash-like internal shell.
 - [Amber](https://amber-lang.com/) is a type-safe modern language which is transpiled to Bash.
 - [Oils](https://www.oilshell.org/) focuses on improving the experience of writing shell scripts.
 - [Koi](https://koi-lang.dev/) is a minimalistic shell scripting language which merges a simple language with common shell behaviors.

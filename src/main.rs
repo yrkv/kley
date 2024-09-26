@@ -44,6 +44,7 @@ fn run_interpreter(args: &Args) -> Result<(), Box<dyn Error>> {
 
     if args.debug_ast {
         println!("{:#?}", ast);
+        return Ok(());
     }
 
     let _ = interpreter::eval(&ast);
