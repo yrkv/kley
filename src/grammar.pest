@@ -5,23 +5,26 @@ program = _{ SOI ~ (stmt+) ~ EOI }
 
 // statements
 stmt = _{
-    // function_def
-    ifthenelse
-    | (binding | assign | expression) ~ ";"
+    function_def
+    | ifthenelse
+    | ((binding | assign | expression) ~ ";")
 }
 
 ifthenelse = {
-    "if" ~ "(" ~ expression ~ ")" ~ block_large ~ ("else" ~ block_large)?
+    "if" ~ expression ~ block_large ~ ("else" ~ block_large)?
 }
 
-// function_def = {
-    // "fn" ~ ident ~ 
-// }
+function_def = {
+    "fn" ~ ident ~ "("~function_args~")" ~ "->" ~ type ~ block_large
+}
+function_args =  {
+    ((ident~":"~type) ~ (","~ident~":"~type)*)?
+}
+
 
 binding = { "let" ~ ident ~ ":" ~ type ~ "=" ~ expression }
 assign = { ident ~ "=" ~ expression }
 
-// type = @{ ident ~ ("<" ~ ident ~ ">")? }
 type = _{
     t_str | t_int | t_bool | t_unit | t_float
     | t_list | t_map | t_tuple | t_variant | t_record
@@ -61,7 +64,7 @@ call_args = _{ expression? ~ ("," ~ expression)* }
 // non-atomic because it's used for interpolation,
 // see https://pest.rs/book/grammars/syntax.html#non-atomic
 block_small = !{ "{" ~ expression ~ "}" }
-block_large = { "{" ~ stmt+ ~ expression? ~ "}" }
+block_large = { "{"~expression~"}" | "{"~stmt+~expression?~"}" }
 
 record_value = {
     "{" ~

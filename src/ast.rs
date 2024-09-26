@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::types::Type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AstNode {
     Unit,
     InfixExpr {
@@ -42,9 +42,15 @@ pub enum AstNode {
         name: String,
         args: Vec<AstNode>,
     },
+    Function {
+        name: String,
+        args: Vec<(String, Type)>,
+        out: Type,
+        block: Box<AstNode>,
+    },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum InfixVerb {
     Plus,
     Minus,
@@ -54,5 +60,5 @@ pub enum InfixVerb {
 
 /// Within each CommandToken, all the parts get concatenated together
 /// each part is either actual text or an expression to evaluate into a Value::Str
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CommandToken(pub Vec<AstNode>);

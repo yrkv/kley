@@ -213,5 +213,25 @@ fn parse_term(pair: Pair<Rule>) -> AstNode {
         Rule::t_variant => todo!(),
         Rule::t_record => todo!(),
         Rule::t_ident => todo!(),
+        Rule::function_def => {
+            let mut inner = pair.into_inner();
+            let name = get_string(&mut inner);
+            let mut args = Vec::new();
+            let mut function_args = inner.next().unwrap().into_inner();
+            while function_args.peek().is_some() {
+                let ident = get_string(&mut function_args);
+                let ty = Type::parse(function_args.next().unwrap());
+                args.push((ident, ty));
+            }
+            let out = Type::parse(inner.next().unwrap());
+            let block = get_ast(&mut inner);
+            AstNode::Function {
+                name,
+                args,
+                out,
+                block,
+            }
+        }
+        Rule::function_args => todo!(),
     }
 }

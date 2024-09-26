@@ -5,6 +5,7 @@ use crate::{ast::*, types::Type};
 #[derive(Debug, Clone)]
 pub struct Env {
     vars: Vec<(String, Type, Value)>,
+    fns: HashMap<String, AstNode>,
 }
 
 fn envlookup(env: &Env, var: &str) -> Option<Value> {
@@ -14,15 +15,21 @@ fn envlookup(env: &Env, var: &str) -> Option<Value> {
         .map(|(_, _, v)| v.clone())
 }
 
-pub fn eval(exp: &AstNode) -> (Value, Env) {
-    eval_env(exp, Env { vars: Vec::new() })
+pub fn eval(exp: &AstNode) -> Value {
+    eval_env(
+        exp,
+        &Env {
+            vars: Vec::new(),
+            fns: HashMap::new(),
+        },
+    )
 }
 
-pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
+pub fn eval_env(exp: &AstNode, env: &Env) -> Value {
     match exp {
         AstNode::InfixExpr { verb, lhs, rhs } => {
-            let (v1, _) = eval_env(lhs, env.clone());
-            let (v2, _) = eval_env(rhs, env.clone());
+            let v1 = eval_env(lhs, env);
+            let v2 = eval_env(rhs, env);
             let out = match verb {
                 InfixVerb::Plus => match (v1, v2) {
                     (Value::Int(x1), Value::Int(x2)) => Value::Int(x1 + x2),
@@ -32,11 +39,11 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
                 InfixVerb::Times => todo!(),
                 InfixVerb::Divide => todo!(),
             };
-            (out, env)
+            out
         }
-        AstNode::Integer(x) => (Value::Int(*x), env),
-        AstNode::Boolean(b) => (Value::Bool(*b), env),
-        AstNode::Ident(var) => (envlookup(&env, var).expect("identifier not found"), env),
+        AstNode::Integer(x) => Value::Int(*x),
+        AstNode::Boolean(b) => Value::Bool(*b),
+        AstNode::Ident(var) => envlookup(&env, var).expect("identifier not found"),
         AstNode::Command(tokens) => {
             // evaluate each token down to a string with concatenated parts
             let mut args: Vec<String> = Vec::new();
@@ -46,7 +53,7 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
                     .0
                     .iter()
                     .map(|ast| {
-                        let (val, _) = eval_env(&ast, env.clone());
+                        let val = eval_env(&ast, env);
                         let Some(Value::Str(s)) = val.convert(&Type::Str) else {
                             panic!()
                         };
@@ -66,107 +73,137 @@ pub fn eval_env(exp: &AstNode, env: Env) -> (Value, Env) {
             let val_program = Value::Str(program.clone());
             let val_args = Value::List(args.iter().map(|a| Value::Str(a.clone())).collect());
 
-            (
-                Value::Record(HashMap::from_iter([
-                    (String::from("program"), val_program),
-                    (String::from("args"), val_args),
-                    (String::from("_command"), Value::Unit),
-                    // TODO: stdin,stdout,stderr
-                ])),
-                // Value::Command {
-                // command: Rc::new(RefCell::new(cmd)),
-                // },
-                env,
-            )
+            Value::Record(HashMap::from_iter([
+                (String::from("program"), val_program),
+                (String::from("args"), val_args),
+                (String::from("_command"), Value::Unit),
+                // TODO: stdin,stdout,stderr ???
+            ]))
+            // Value::Command {
+            // command: Rc::new(RefCell::new(cmd)),
+            // },
         }
         AstNode::Block(es) => {
             let mut out = Value::Unit;
             let mut block_env = env.clone();
             for e in es {
-                (out, block_env) = eval_env(e, block_env);
+                // Match over the AstNode for constructs which alter the environment,
+                // such as variable bindings, assignment, functions, or type aliases.
+                // In the default case, it just evaluates the expression.
+                out = match e {
+                    AstNode::Binding { ident, ty, expr } => {
+                        let v = eval_env(expr, &block_env);
+                        let Some(v) = v.convert(ty) else {
+                            todo!("failed to convert");
+                        };
+                        block_env
+                            .vars
+                            .insert(0, (ident.to_string(), ty.clone(), v.clone()));
+                        Value::Unit
+                    }
+                    AstNode::Assign { ident, expr } => {
+                        if envlookup(&block_env, ident).is_none() {
+                            todo!()
+                        }
+                        let new_v = eval_env(expr, &block_env);
+                        for (s, _t, v) in block_env.vars.iter_mut() {
+                            if ident == s {
+                                *v = new_v;
+                                break;
+                            }
+                        }
+                        Value::Unit
+                    }
+                    AstNode::Function { name, .. } => {
+                        block_env.fns.insert(name.clone(), e.clone());
+                        Value::Unit
+                    }
+                    _ => eval_env(e, &block_env),
+                };
 
+                // If the resulting value has some defined side effect (such as a command record)
+                // then it should be acted upon here.
                 if let Some((program, args)) = extract_command(&out) {
                     let _ = Command::new(program).args(args).spawn().unwrap().wait();
                 }
-                // Command::new()
-                // let _ = command.borrow_mut().spawn().unwrap().wait();
-                // if let Value::Command { command } = &out {
-                // let _ = command.borrow_mut().spawn().unwrap().wait();
-                // }
             }
-            (out, env)
+            out
         }
-        AstNode::Assign { ident, expr } => {
-            if envlookup(&env, ident).is_none() {
-                todo!()
-            }
-            let (new_v, _) = eval_env(expr, env.clone());
-
-            let mut env = env;
-            for (s, _t, v) in env.vars.iter_mut() {
-                if ident == s {
-                    *v = new_v;
-                    break;
-                }
-            }
-            (Value::Unit, env)
-        }
-        AstNode::Binding { ident, ty, expr } => {
-            let (v, _) = eval_env(expr, env.clone());
-
-            let Some(v) = v.convert(ty) else {
-                todo!("failed to convert");
-            };
-            let mut env = env;
-            env.vars
-                .insert(0, (ident.to_string(), ty.clone(), v.clone()));
-            (Value::Unit, env)
-        }
+        AstNode::Assign { .. } => unreachable!(),
+        AstNode::Binding { .. } => unreachable!(),
+        AstNode::Function { .. } => unreachable!(),
         AstNode::QuoteString(qs) => {
             let parts: Vec<String> = qs
                 .iter()
                 .map(|ast| {
-                    let (val, _) = eval_env(&ast, env.clone());
+                    let val = eval_env(&ast, env);
                     let Some(Value::Str(s)) = val.convert(&Type::Str) else {
                         panic!()
                     };
                     s
                 })
                 .collect();
-            (Value::Str(parts.concat()), env)
+            Value::Str(parts.concat())
         }
-        AstNode::StringLiteral(s) => (Value::Str(String::from(s)), env),
+        AstNode::StringLiteral(s) => Value::Str(String::from(s)),
         AstNode::Unit => todo!(),
         AstNode::IfThenElse {
             cond,
             t_block,
             f_block,
         } => {
-            let (out, _) = eval_env(cond, env.clone());
+            let out = eval_env(cond, env);
             let Value::Bool(b) = out else {
                 todo!();
             };
-            let (out, _) = if b {
-                eval_env(t_block, env.clone())
+            let out = if b {
+                eval_env(t_block, env)
             } else {
-                eval_env(f_block, env.clone())
+                eval_env(f_block, env)
             };
-            (out, env)
+            out
         }
         AstNode::RecordValue(r) => {
             let mut out = HashMap::new();
             for (key, ast) in r.iter() {
-                let (val, _) = eval_env(ast, env.clone());
+                let val = eval_env(ast, env);
                 out.insert(key.clone(), val);
             }
-            (Value::Record(out), env)
+            Value::Record(out)
         }
         AstNode::Call { name, args } => match (name.as_str(), args.as_slice()) {
             ("display", [e]) => {
-                let (out, _) = eval_env(e, env.clone());
-                (Value::Str(macro_display(out)), env)
+                let out = eval_env(e, env);
+                Value::Str(macro_display(out))
             }
-            _ => todo!(),
+            (name, args) => match env.fns.get(name) {
+                Some(AstNode::Function {
+                    name: _,
+                    args: fn_args,
+                    out: fn_out,
+                    block,
+                }) => {
+                    let mut fn_env = Env {
+                        vars: Vec::new(),
+                        fns: env.fns.clone(),
+                    };
+                    for i in 0..args.len() {
+                        let v = eval_env(&args[i], env);
+                        fn_env
+                            .vars
+                            .push((fn_args[i].0.clone(), fn_args[i].1.clone(), v));
+                    }
+
+                    let v = eval_env(block, &fn_env);
+                    v.convert(fn_out).unwrap()
+                }
+                Some(_) => {
+                    todo!()
+                }
+                None => {
+                    todo!()
+                }
+            },
         },
     }
 }
